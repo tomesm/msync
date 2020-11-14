@@ -1,2 +1,2 @@
 # msync
-Simple file synchronization for linx
+Simple file synchronization for linux
