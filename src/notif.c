@@ -21,9 +21,9 @@ int main()
 	if(fd < 0)
 		perror("ERROR::inotify init");
 
-	DIR* dir = opendir("testdir");
+	DIR* dir = opendir("tests");
 	if (dir) {
-		wd = inotify_add_watch(fd, "testdir", IN_CREATE | IN_DELETE);
+		wd = inotify_add_watch(fd, "tests", IN_CREATE | IN_DELETE);
 	} else if (ENOENT == errno) {
 		perror("ERROR::Watched directory does not exists");
 	} else {
