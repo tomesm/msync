@@ -1,6 +1,6 @@
 #include <assert.h>
 #include "munit.h"
-#include "../src/hashmap.h"
+#include "../src/collection.h"
 #include "../src/bstrlib.h"
 
 Hashmap *map = NULL;
@@ -33,7 +33,7 @@ static int traverse_fail_cb(HashmapNode *node)
 
 char *test_create()
 {
-    map = hashmapCreate(NULL, NULL);
+    map = collection_hashmap_create(NULL, NULL);
     mu_assert(map != NULL, "Failed to create dict.");
 
     return NULL;
@@ -41,26 +41,26 @@ char *test_create()
 
 char *test_destroy()
 {
-    hashmapDestroy(map);
+    collection_hashmap_destroy(map);
 
     return NULL;
 }
 
 char *test_get_set()
 {
-    int rc = hashmapSet(map, &test1, &expect1);
+    int rc = collection_hashmap_set(map, &test1, &expect1);
     mu_assert(rc == 0, "Failed to set &test1");
-    bstring result = hashmapGet(map, &test1);
+    bstring result = collection_hashmap_get(map, &test1);
     mu_assert(result == &expect1, "Wrong value for test1.");
 
-    rc = hashmapSet(map, &test2, &expect2);
+    rc = collection_hashmap_set(map, &test2, &expect2);
     mu_assert(rc == 0, "Failed to set test2");
-    result = hashmapGet(map, &test2);
+    result = collection_hashmap_get(map, &test2);
     mu_assert(result == &expect2, "Wrong value for test2.");
 
-    rc = hashmapSet(map, &test3, &expect3);
+    rc = collection_hashmap_set(map, &test3, &expect3);
     mu_assert(rc == 0, "Failed to set test3");
-    result = hashmapGet(map, &test3);
+    result = collection_hashmap_get(map, &test3);
     mu_assert(result == &expect3, "Wrong value for test3.");
 
     return NULL;
@@ -68,12 +68,12 @@ char *test_get_set()
 
 char *test_traverse()
 {
-    int rc = hashmapTraverse(map, traverse_good_cb);
+    int rc = collection_hashmap_traverse(map, traverse_good_cb);
     mu_assert(rc == 0, "Failed to traverse.");
     mu_assert(traverse_called == 3, "Wrong count traverse.");
 
     traverse_called = 0;
-    rc = hashmapTraverse(map, traverse_fail_cb);
+    rc = collection_hashmap_traverse(map, traverse_fail_cb);
     mu_assert(rc == 1, "Failed to traverse.");
     mu_assert(traverse_called == 2, "Wrong count traverse for fail.");
 
@@ -82,22 +82,22 @@ char *test_traverse()
 
 char *test_delete()
 {
-    bstring deleted = (bstring)hashmapDelete(map, &test1);
+    bstring deleted = (bstring)collection_hashmap_delete(map, &test1);
     mu_assert(deleted != NULL, "Got NULL on delete.");
     mu_assert(deleted == &expect1, "Should get test1");
-    bstring result = hashmapGet(map, &test1);
+    bstring result = collection_hashmap_get(map, &test1);
     mu_assert(result == NULL, "Should delete.");
 
-    deleted = (bstring)hashmapDelete(map, &test2);
+    deleted = (bstring)collection_hashmap_delete(map, &test2);
     mu_assert(deleted != NULL, "Got NULL on delete.");
     mu_assert(deleted == &expect2, "Should get test2");
-    result = hashmapGet(map, &test2);
+    result = collection_hashmap_get(map, &test2);
     mu_assert(result == NULL, "Should delete.");
 
-    deleted = (bstring)hashmapDelete(map, &test3);
+    deleted = (bstring)collection_hashmap_delete(map, &test3);
     mu_assert(deleted != NULL, "Got NULL on delete.");
     mu_assert(deleted == &expect3, "Should get test3");
-    result = hashmapGet(map, &test3);
+    result = collection_hashmap_get(map, &test3);
     mu_assert(result == NULL, "Should delete.");
 
     return NULL;

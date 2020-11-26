@@ -14,22 +14,18 @@ OBJECTS=$(patsubst %.c, %.o, $(SOURCES))
 TEST_SRC=$(wildcard tests/*_tests.c)
 TESTS=$(patsubst %.c, %, $(TEST_SRC))
 
-NOTIF_SOURCES=$(wildcard src/**/notif.c, src/notif.c)
-NOTIF_OBJECTS=$(patsubst %.c,%.o, $(NOTIF_SOURCES))
-
-
-notif: $(NOTIF_OBJECTS)
-	$(CC) -o $(BUILD)/notif $(NOTIF_OBJECTS)
-
-run_notif:
-	build/notif
-
 TARGET=build/lib.a
 # NOTE: Specify your own name with: make all TARGET=build/your_own_lib.a
 S0_TARGET=$(patsubst %.a, %.so, $(TARGET))
 
+notif:  
+	$(CC) -g -o notif main_notif.c $(TARGET)
+
+server:
+	$(CC) -g -o server main_server.c $(TARGET)
+
 # The target build
-all: $(TARGET) $(SO_TARGET) tests
+all: $(TARGET) $(SO_TARGET) tests notif server
 
 dev: CFLAGS=-g -Wall -Isrc -Wextra $(OPTFLAGS)
 dev: all
@@ -61,3 +57,5 @@ clean:
 	rm -rf tests/tests.log
 	find . -name "*.gc*" -exec rm {} \;
 	rm -rf `find . -name "*.dSYM" -print`
+	rm -rf server
+	rm -rf notif

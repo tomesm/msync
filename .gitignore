@@ -1,6 +1,7 @@
 bin/
 testdir/
 build/
+.vscode/
 
 # Prerequisites
 *.d

@@ -1,15 +1,11 @@
+#include "src/notif.h"
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "src/debug.h"
-#include "src/notif.h"
 
-int main(int argc, char *argv[])
+int main(int argc, char **argv)
 {
-    if (argc < 2) {
-        log_err("Must provide at least one directory name");
-        exit(1);
-    }
+    notif_watching_loop_start(argc, argv);
 
-    start_watching_loop(argc, argv);
-
+    return 0;
 }

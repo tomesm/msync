@@ -1,13 +1,13 @@
 #include "munit.h"
-#include "../src/darray.h"
+#include "../src/collection.h"
 
-static DynamicArray *array = NULL;
+static DArray *array = NULL;
 static int *val1 = NULL;
 static int *val2 = NULL;
 
 char *test_create()
 {
-    array = dynamicArrayCreate(sizeof(int), 100);
+    array = collection_darray_create(sizeof(int), 100);
 
     mu_assert(array != NULL, "Dynamic array create failed");
     mu_assert(array->contents != NULL, "contents are wrong in dynamic_array");
@@ -20,17 +20,17 @@ char *test_create()
 
 char *test_destroy()
 {
-    dynamicArrayDestroy(array);
+    collection_darray_destroy(array);
 
     return NULL;
 }
 
 char *test_new()
 {
-    val1 = dynamicArrayNew(array);
+    val1 = collection_darray_new(array);
     mu_assert(val1 != NULL, "failed to make new a element");
 
-    val2 = dynamicArrayNew(array);
+    val2 = collection_darray_new(array);
     mu_assert(val2 != NULL, "failed to make a new element");
 
     return NULL;
@@ -38,32 +38,32 @@ char *test_new()
 
 char *test_set()
 {
-    dynamicArraySet(array, 0, val1);
-    dynamicArraySet(array, 1, val2);
+    collection_darray_set(array, 0, val1);
+    collection_darray_set(array, 1, val2);
 
     return NULL;
 }
 
 char *test_get()
 {
-    mu_assert(dynamicArrayGet(array, 0) == val1, "Wrong first value");
-    mu_assert(dynamicArrayGet(array, 1) == val2, "Wrong second value");
+    mu_assert(collection_darray_get(array, 0) == val1, "Wrong first value");
+    mu_assert(collection_darray_get(array, 1) == val2, "Wrong second value");
 
     return NULL;
 }
 
 char *test_remove()
 {
-    int *val_check = dynamicArrayRemove(array, 0);
+    int *val_check = collection_darray_remove(array, 0);
     mu_assert(val_check != NULL, "Should not get NULL.");
     mu_assert(*val_check == *val1, "Should get the first value.");
-    mu_assert(dynamicArrayGet(array, 0) == NULL, "Should be gone.")
+    mu_assert(collection_darray_get(array, 0) == NULL, "Should be gone.")
     DYNAMIC_ARRAY_FREE(val_check);
 
-    val_check = dynamicArrayRemove(array, 1);
+    val_check = collection_darray_remove(array, 1);
     mu_assert(val_check != NULL, "Should not get NULL.");
     mu_assert(*val_check == *val2, "Should get the second value.");
-    mu_assert(dynamicArrayGet(array, 1) == NULL, "Should be gone.")
+    mu_assert(collection_darray_get(array, 1) == NULL, "Should be gone.")
     DYNAMIC_ARRAY_FREE(val_check);
 
     return NULL;
@@ -72,15 +72,15 @@ char *test_remove()
 char *test_expand_contract()
 {
     int old_max = array->max;
-    dynamicArrayExpand(array);
+    collection_darray_expand(array);
     mu_assert((unsigned int) array->max == old_max + array->expand_rate,
             "Wrong size after expand.");
 
-    dynamicArrayContract(array);
+    collection_darray_contract(array);
     mu_assert((unsigned int) array->max == array->expand_rate + 1,
             "Should stay at the expand rate at least.")
 
-    dynamicArrayContract(array);
+    collection_darray_contract(array);
     mu_assert((unsigned int) array->max == array->expand_rate + 1,
             "Should stay at the expand_rate at least");
 
@@ -91,14 +91,14 @@ char *test_push_pop()
 {
     int i = 0;
     for (i = 0; i < 1000; i++) {
-        int *val = dynamicArrayNew(array);
+        int *val = collection_darray_new(array);
         *val = i * 333;
-        dynamicArrayPush(array, val);
+        collection_darray_push(array, val);
     }
     mu_assert(array->max == 1201, "Wrong max size.");
 
     for (i = 999; i >= 0; i--) {
-        int *val = dynamicArrayPop(array);
+        int *val = collection_darray_pop(array);
         mu_assert(val != NULL, "Should not get a NULL");
         mu_assert(*val == i * 333, "Wrong value.");
         DYNAMIC_ARRAY_FREE(val);
