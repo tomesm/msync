@@ -1,11 +1,11 @@
-#include "src/connection.h"
+#include "src/net.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 int main(int argc, char **argv)
 {
-    connection_server_run();
+    net_server_run();
     //
     /*unsigned char buf[1024];*/
     /*int8_t magic;*/
