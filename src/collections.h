@@ -54,7 +54,7 @@ void collections_darray_clear_destroy(DArray *array);
 #define DEFAULT_BUCKETS_NUM 100
 
 typedef int (*HashMapCompare)(int *a, int *b);
-typedef uint32_t (*HashMapHash)(int *key);
+typedef uint32_t (*HashMapHash)(void *key);
 
 typedef struct HashMap {
     DArray *buckets; // Will hold array of dict nodes

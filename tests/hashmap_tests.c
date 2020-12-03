@@ -57,7 +57,13 @@ char *test_get_set()
     int rc = collections_hashmap_set(map, &test1, &expect1);
     mu_assert(rc == 0, "Failed to set &test1");
     char *result = (char *)collections_hashmap_get(map, &test1);
-    mu_assert((strcmp(result, expect2)), "Wrong value for test1.");
+    mu_assert((strcmp(result, expect1)), "Wrong value for test1.");
+
+    result = (char *)collections_hashmap_get(map, &test1);
+    mu_assert((strcmp(result, expect1)), "Wrong value for test1 for the second time.");
+
+    result = (char *)collections_hashmap_get(map, &test1);
+    mu_assert((strcmp(result, expect1)), "Wrong value for test1 for the third time.");
 
     rc = collections_hashmap_set(map, &test2, &expect2);
     mu_assert(rc == 0, "Failed to set test2");

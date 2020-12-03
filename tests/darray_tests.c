@@ -48,6 +48,8 @@ char *test_get()
 {
     mu_assert(collections_darray_get(array, 0) == val1, "Wrong first value");
     mu_assert(collections_darray_get(array, 1) == val2, "Wrong second value");
+    mu_assert(collections_darray_get(array, 0) == val1, "Wrong first value for the second time");
+    mu_assert(collections_darray_get(array, 1) == val2, "Wrong second value for the second time");
 
     return NULL;
 }

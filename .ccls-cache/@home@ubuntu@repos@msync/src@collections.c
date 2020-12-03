@@ -41,12 +41,12 @@ error:
 
 DArray *collections_darray_create(size_t element_size, size_t initial_max)
 {
-    DArray *array = (DArray *) malloc(sizeof(DArray));
+    DArray *array = malloc(sizeof(DArray));
     check_mem(array);
     array->max = initial_max;
     check(array->max > 0, "You must set an initial max > 0");
 
-    array->contents = (void **) calloc(initial_max, sizeof(void *));
+    array->contents = calloc(initial_max, sizeof(void *));
     check_mem(array->contents);
 
     array->end = 0;
@@ -192,7 +192,7 @@ static uint32_t default_hash(void *a)
 
 HashMap *collections_hashmap_create(HashMapCompare compare, HashMapHash hash)
 {
-    HashMap *map = (HashMap *) calloc(1, sizeof(struct HashMap));
+    HashMap *map = calloc(1, sizeof(struct HashMap));
     check_mem(map);
 
     map->compare = compare == NULL ? default_compare : compare;
@@ -232,7 +232,7 @@ void collections_hashmap_destroy(HashMap *map)
 
 static inline HashMapNode *create_node(int hash, int *key, void *value)
 {
-    HashMapNode *node = (HashMapNode *) calloc(1, sizeof(HashMapNode));
+    HashMapNode *node = calloc(1, sizeof(HashMapNode));
     check_mem(node);
 
     node->key = key;
@@ -286,7 +286,7 @@ static inline int get_node(HashMap *map, uint32_t hash, DArray *bucket, int *key
 
     for (i = 0; i < DYNAMIC_ARRAY_END(bucket); i++) {
         debug("TRY: %d", i);
-        HashMapNode *node = (HashMapNode *) collections_darray_get(bucket, i);
+        HashMapNode *node = collections_darray_get(bucket, i);
         if (node->hash == hash && map->compare(node->key, key) == 0) {
             return i;
         }
@@ -303,7 +303,7 @@ void *collections_hashmap_get(HashMap *map, int *key)
     int i = get_node(map, hash, bucket, key);
     if (i == -1) return NULL;
 
-    HashMapNode *node = (HashMapNode *) collections_darray_get(bucket, i);
+    HashMapNode *node = collections_darray_get(bucket, i);
     check(node != NULL, "Failed to get node from bucket when it should exist.");
 
     return node->value;
@@ -316,10 +316,10 @@ int collections_hashmap_traverse(HashMap *map, HashMapTraverseCb traverse_cb)
     int i, j, rc = 0;
 
     for (i = 0; i < DYNAMIC_ARRAY_COUNT(map->buckets); i++) {
-        DArray *bucket = (DArray *) collections_darray_get(map->buckets, i);
+        DArray *bucket = collections_darray_get(map->buckets, i);
         if (bucket) {
             for (j = 0; j < DYNAMIC_ARRAY_COUNT(bucket); j++) {
-                HashMapNode *node = (HashMapNode *) collections_darray_get(bucket, j);
+                HashMapNode *node = collections_darray_get(bucket, j);
                 rc = traverse_cb(node);
                 if (rc != 0) return rc;
             }
@@ -337,11 +337,11 @@ void *collections_hashmap_delete(HashMap *map, int *key)
     int i = get_node(map, hash, bucket, key);
     if (i == -1) return NULL;
 
-    HashMapNode *node = (HashMapNode *) collections_darray_get(bucket, i);
+    HashMapNode *node = collections_darray_get(bucket, i);
     void *value = node->value;
     free(node);
 
-    HashMapNode *ending = (HashMapNode *) collections_darray_pop(bucket);
+    HashMapNode *ending = collections_darray_pop(bucket);
 
     if (ending != node) {
         // looks like it's not the last one, swap it

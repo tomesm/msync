@@ -76,7 +76,7 @@ char *concat_strings(int count, ...)
     va_end(ap);
 
     // Allocate memory to concat strings
-    char *merged = (char *)calloc(sizeof(char), len);
+    char *merged = calloc(sizeof(char), len);
     int null_pos = 0;
 
     // Actually concatenate strings
@@ -106,12 +106,16 @@ void notify_watch(int dir_count, char **paths)
     sigaction(SIGINT,&int_handler, 0);
 
     fd = inotify_init();
-    check(fd < 0, "ERROR::inotify init");
+    check(fd > 0, "ERROR::inotify init");
 
     for (i = 1; (i < dir_count); i++) {
         int rc = add_watch_directory(map, fd, paths[i]);
-        check(rc != 0, "Falied to set watch on: %s", paths[i]);
+        check(rc == 0, "Falied to set watch on: %s", paths[i]);
     }
+
+    int wd = 1;
+    //char * pdir1 = collections_hashmap_get(map, &wd);
+    //char * pdir2 = collections_hashmap_get(map, &wd);
 
     int client_fd = net_client_get_socket();
 
@@ -145,7 +149,7 @@ void notify_watch(int dir_count, char **paths)
                     } else {
                         printf("New file %s created in %s.\n", event->name, parentdir);
 
-                        Message *message = (Message *) malloc(sizeof(Message));
+                        Message *message = malloc(sizeof(Message));
                         message->action = 1;
                         message->isdir = 0;
                         message->path = strdup(concat_strings(3, parentdir, "/", event->name));

@@ -405,10 +405,10 @@ void net_server_run()
                     } else {
                         /* we got some data from a client */
 
-                        Message *message = (Message *)malloc(sizeof(Message));
+                        Message *message = malloc(sizeof(Message));
                         assert(message != NULL);
 
-                        message->path = (char *) malloc(10 * sizeof(char));
+                        message->path = malloc(10 * sizeof(char));
 
                         int16_t message_size;
 

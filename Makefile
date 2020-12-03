@@ -18,14 +18,14 @@ TARGET=build/lib.a
 # NOTE: Specify your own name with: make all TARGET=build/your_own_lib.a
 S0_TARGET=$(patsubst %.a, %.so, $(TARGET))
 
-notif:  
-	$(CC) -g -o notif main_notif.c $(TARGET)
+client:  
+	$(CC) -g -o client client.c $(TARGET)
 
 server:
-	$(CC) -g -o server main_server.c $(TARGET)
+	$(CC) -g -o server server.c $(TARGET)
 
 # The target build
-all: $(TARGET) $(SO_TARGET) tests notif server
+all: $(TARGET) $(SO_TARGET) tests client server
 
 dev: CFLAGS=-g -Wall -Isrc -Wextra $(OPTFLAGS)
 dev: all
@@ -58,4 +58,4 @@ clean:
 	find . -name "*.gc*" -exec rm {} \;
 	rm -rf `find . -name "*.dSYM" -print`
 	rm -rf server
-	rm -rf notif
+	rm -rf client
