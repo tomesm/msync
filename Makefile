@@ -57,5 +57,6 @@ clean:
 	rm -rf tests/tests.log
 	find . -name "*.gc*" -exec rm {} \;
 	rm -rf `find . -name "*.dSYM" -print`
+	rm -rf src/*.o
 	rm -rf server
 	rm -rf client

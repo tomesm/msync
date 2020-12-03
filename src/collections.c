@@ -154,9 +154,9 @@ static int default_compare(int *a, int *b)
     // return strcmp((const char *)a, (const char *)b);
     // return bstrcmp((bstring) a, (bstring) b);
 
-    if (*a < *b) {
+    if (a < b) {
         return -1;
-    } else if (*a == *b) {
+    } else if (a == b) {
         return 0;
     } else {
         return 1;
@@ -297,10 +297,11 @@ static inline int get_node(HashMap *map, uint32_t hash, DArray *bucket, int *key
 void *collections_hashmap_get(HashMap *map, int *key)
 {
     uint32_t hash = 0;
+    int i = 0;
     DArray *bucket = find_bucket(map, key, 0, &hash);
     if (!bucket) return NULL;
 
-    int i = get_node(map, hash, bucket, key);
+    i = get_node(map, hash, bucket, key);
     if (i == -1) return NULL;
 
     HashMapNode *node = collections_darray_get(bucket, i);

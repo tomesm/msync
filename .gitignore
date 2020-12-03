@@ -1,7 +1,8 @@
 bin/
-testdir/
+dirtest/
 build/
 .vscode/
+.ccls-cache/
 
 # Prerequisites
 *.d
