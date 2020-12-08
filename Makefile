@@ -24,10 +24,18 @@ client:
 server:
 	$(CC) -g -o server server.c $(TARGET)
 
+# Run debug server to deal with memory leaks
+dserver:
+	valgrind --tool=memcheck --leak-check=full --show-reachable=yes --track-origins=yes ./server
+
+# Run debug client to deal with memory leaks
+dclient:
+	valgrind --tool=memcheck --leak-check=full --show-reachable=yes --track-origins=yes ./client dirtest
+
 # The target build
 all: $(TARGET) $(SO_TARGET) tests client server
 
-dev: CFLAGS=-g -Wall -Isrc -Wextra $(OPTFLAGS)
+dev: CFLAGS=-g -Wall -Isrc -Wextra -pedantic -Werror $(OPTFLAGS)
 dev: all
 
 $(TARGET): CFLAGS += -fPIC
@@ -49,7 +57,7 @@ tests: $(TESTS) valgrind
 	sh ./tests/runtests.sh
 
 valgrind:
-	VALGRIND="valgrind --tool=memcheck --log-file=/tmp/valgrind-%p.log"
+	VALGRIND="valgrind --tool=memcheck --leak-check=full --show-reachable=yes --track-origins=yes --log-file=/tmp/valgrind-%p.log"
 
 
 clean:

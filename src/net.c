@@ -13,10 +13,17 @@
 
 #include "debug.h"
 #include "net.h"
+#include "fs.h"
 
-#define MAXDATASIZE 255
+
 #define PORT "6666"
 #define HOST "localhost"
+
+typedef enum {
+    E_CREATE = 1,
+    E_DELETE = 2,
+    E_MODIFY = 3
+}e_action;
 
 static inline uint64_t pack754(long double f, unsigned bits, unsigned expbits)
 {
@@ -113,7 +120,7 @@ static inline unsigned long unpacki32(unsigned char *buf)
 **  c - 8-bit char          f - float, 32-bit
 **  s - string (16-bit length is automatically prepended)
 */
-static inline int32_t pack(unsigned char *buf, const char *format, ...)
+int32_t net_pack(unsigned char *buf, const char *format, ...)
 {
     va_list ap;
     int16_t h;
@@ -173,9 +180,9 @@ static inline int32_t pack(unsigned char *buf, const char *format, ...)
 }
 
 /*
-** unpack() -- unpack data dictated by the format string into the buffer
+** net_unpack() -- unpack data dictated by the format string into the buffer
 */
-static inline void unpack(unsigned char *buf, const char *format, ...)
+void net_unpack(unsigned char *buf, const char *format, ...)
 {
     va_list ap;
     int16_t *h;
@@ -245,6 +252,8 @@ static inline void *get_in_addr(struct sockaddr *sa)
     return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
+
+
 static inline int send_all(int s, unsigned char *buf, int *len)
 {
     int total = 0;        // how many bytes we've sent
@@ -263,34 +272,6 @@ static inline int send_all(int s, unsigned char *buf, int *len)
     *len = total; // return number actually sent here
 
     return n == -1 ? -1 : 0; // return -1 on failure, 0 on success
-}
-
-void net_send_msg(int sockfd, Message *message)
-{
-    unsigned char buf[2048];
-    int16_t packetsize;
-    int len, numbytes;
-    int16_t message_size = 0;
-
-    packetsize = pack(buf, "hhhs", message_size, message->action, message->isdir, message->path);
-
-    packi16(buf, packetsize); // store packet size in packet for kicks
-    len = (int) packetsize;
-
-    printf("Sending: %d bytes\n", len);
-    if (send_all(sockfd, buf, &len) == -1) {
-        log_err("ERROR::sendall. We only sent %d bytes because of an error!", len);
-        exit(1);
-    }
-    printf("Sent: %d bytes\n", len);
-
-    if ((numbytes = recv(sockfd, buf, MAXDATASIZE-1, 0)) == -1) {
-        log_err("ERROR::ACK not received properly");
-        exit(1);
-    }
-
-    buf[numbytes] = '\0';
-    printf("Received answer: %s\n", buf);
 }
 
 void net_server_run()
@@ -404,19 +385,36 @@ void net_server_run()
                         FD_CLR(i, &master); // remove from master set
                     } else {
                         /* we got some data from a client */
+                        uint16_t path_len = (uint16_t) buf[MESSAGE_PATH_LEN_OFFSET];
+                        char *path_len_str = net_get_message_str_length(path_len);
 
+                        uint16_t data_len = (uint16_t) buf[MESSAGE_PATH_LEN_OFFSET + path_len + 2];
+                        char *data_len_str = net_get_message_str_length(data_len);
+                        
                         Message *message = malloc(sizeof(Message));
                         assert(message != NULL);
 
-                        message->path = malloc(10 * sizeof(char));
+                        message->path = malloc(path_len * sizeof(unsigned char) + 1); // 1 + for ending nul
+                        message->data = malloc(data_len * sizeof(char) + 1); // 1 + for ending nul
+
+                        char * format= strdup(net_concat_strings(5, "hhh", path_len_str, "s", data_len_str, "s"));
 
                         int16_t message_size;
 
-                        printf("Size of path: %d\n", (int) *buf+7);
+                        printf("Size of path: %d\n", path_len);
+                        printf("Size of data: %d\n", data_len);
 
-                        unpack(buf, "hhh10s", &message_size, &message->action, &message->isdir, message->path);
+                        net_unpack(buf, format, &message_size, &message->action, &message->isdir, 
+                                message->path, message->data);
 
-                        printf(" %" PRId16" %" PRId16 "% " PRId16 ": %s \n", message_size, message->action, message->isdir, message->path);
+                        printf(" %" PRId16" %" PRId16 "% " PRId16 ": %s \n data: %s \n", 
+                                message_size, message->action, message->isdir, message->path, 
+                                message->data);
+
+                        // if modification perhaps check if the file has been really changed
+                        fs_make_changes(message, bfromcstr("servertest"));
+                        
+                        
 
                         for(j = 0; j <= fdmax; j++) {
                             // send to everyone!
@@ -427,17 +425,16 @@ void net_server_run()
                                         perror("send");
                                     }
                                 }
-                                // send ack to sender
-                                if (j == listener) {
-                                    if (send(newfd, "ack", 3, 0) == -1) {
-                                        perror("send");
-                                    }
-                                }
                             }
                         }
 
-                        // free(message->path);
+                        free(message->path);
+                        free(message->data);
                         free(message);
+
+                        free(path_len_str);
+                        free(data_len_str);
+                        free(format);
 
 
 
@@ -504,4 +501,109 @@ int net_client_get_socket()
     freeaddrinfo(servinfo); // all done with this structure
 
     return sockfd;
+}
+
+static inline void clean_message(Message *message)
+{
+    if (message) 
+        free(message);
+}
+
+void net_message_send(int sockfd, Message *message)
+{
+    unsigned char buf[2048];
+    int16_t packetsize;
+    int len;
+    int16_t message_size = 0;
+
+    packetsize = net_pack(buf, "hhhss", message_size, message->action, message->isdir, message->path,
+                        message->data);
+
+    packi16(buf, packetsize); // store packet size in packet for kicks
+    len = (int) packetsize;
+
+    printf("Sending: %d bytes\n", len);
+    if (send_all(sockfd, buf, &len) == -1) {
+        log_err("ERROR::sendall. We only sent %d bytes because of an error!", len);
+        exit(1);
+    }
+    printf("Sent: %d bytes\n", len);
+
+    // if ((numbytes = recv(sockfd, buf, MAXDATASIZE-1, 0)) == -1) {
+    //     log_err("ERROR::ACK not received properly");
+    //     exit(1);
+    // }
+
+    
+    
+    clean_message(message);
+}
+
+Message *net_message_request_create(uint16_t action, uint16_t isdir, unsigned char* path)
+{
+    Message *message = malloc(sizeof(Message));
+    check_mem(message);
+    message->action = action;
+    message->isdir = isdir;
+    message->path = path;
+    message->data = "some Testing data";
+
+    return message;
+error:
+    return NULL;
+}
+
+// Message *net_message_response_create(uint16_t action, uint16_t isdir, char* path)
+// {
+//     Message *message = malloc(sizeof(Message));
+//     check_mem(message);
+//     message->action = action;
+//     message->isdir = isdir;
+//     message->path = path;
+
+//     return message;
+// error:
+//     return NULL;
+// }
+
+char *net_get_message_str_length(uint16_t len)
+{
+    char *len_str = malloc(32 * sizeof(char));
+    check_mem(len_str);
+
+    int res = sprintf(len_str, "%d", len);
+    check(res > 0, "ERROR :: creating str length");
+
+    return len_str;
+error:
+    return NULL;
+}
+
+char *net_concat_strings(int count, ...)
+{
+    va_list ap;
+    int i;
+
+    // Find required length to store merged string
+    int len = 1; // room for NULL
+    va_start(ap, count);
+    for(i = 0 ; i < count ; i++) {
+        len += strlen(va_arg(ap, char*));
+    }
+    va_end(ap);
+
+    // Allocate memory to concat strings
+    char *merged = calloc(sizeof(char), len);
+    int null_pos = 0;
+
+    // Actually concatenate strings
+    va_start(ap, count);
+    for(i = 0 ; i < count ; i++) {
+        char *s = va_arg(ap, char*);
+        strcpy(merged + null_pos, s);
+        null_pos += strlen(s);
+    }
+    va_end(ap);
+
+    return merged;
 }

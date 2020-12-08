@@ -3,6 +3,10 @@ dirtest/
 build/
 .vscode/
 .ccls-cache/
+serverdir/
+
+client
+server
 
 # Prerequisites
 *.d

@@ -56,7 +56,8 @@ DArray *collections_darray_create(size_t element_size, size_t initial_max)
     return array;
 
 error:
-    if (array) free(array);
+    if (array) 
+        free(array);
 
     return NULL;
 }
@@ -66,7 +67,8 @@ void collections_darray_clear(DArray *array)
     int i = 0;
     if (array->element_size > 0) {
         for (i = 0; i < array->max; i++) {
-            if (array->contents != NULL) free(array->contents[i]);
+            if (array->contents != NULL) 
+                free(array->contents[i]);
         }
     }
 }
@@ -110,7 +112,8 @@ int collections_darray_contract(DArray *array)
 void collections_darray_destroy(DArray *array)
 {
     if (array) {
-        if (array->contents) free(array->contents);
+        if (array->contents) 
+            free(array->contents);
         free(array);
     }
 }
@@ -149,7 +152,7 @@ error:
     return NULL;
 }
 
-static int default_compare(int *a, int *b)
+static int default_compare(int a, int b)
 {
     // return strcmp((const char *)a, (const char *)b);
     // return bstrcmp((bstring) a, (bstring) b);
@@ -165,15 +168,13 @@ static int default_compare(int *a, int *b)
 }
 
 // Jenkins hash
-static uint32_t default_hash(void *a)
+static uint32_t default_hash(int a)
 {
-    // size_t len = blength((bstring) a);
-    // char *key = bdata((bstring) a);
-    char *key;
+    char key[64];
     uint32_t hash = 0;
     uint32_t i = 0;
 
-    key = (char *)a;
+    sprintf(key, "%d", a);
     size_t len = strlen(key);
 
     for (hash = i = 0; i < len; i++) {
@@ -204,7 +205,8 @@ HashMap *collections_hashmap_create(HashMapCompare compare, HashMapHash hash)
     return map;
 
 error:
-    if (map) collections_hashmap_destroy(map);
+    if (map) 
+        collections_hashmap_destroy(map);
     return NULL;
 }
 
@@ -216,7 +218,7 @@ void collections_hashmap_destroy(HashMap *map)
     if (map) {
         if (map->buckets) {
             for (i = 0; i < DYNAMIC_ARRAY_COUNT(map->buckets); i++) {
-                DArray *bucket = (DArray *) collections_darray_get(map->buckets, i);
+                DArray *bucket = collections_darray_get(map->buckets, i);
                 if (bucket) {
                     for (j = 0; j < DYNAMIC_ARRAY_COUNT(bucket); j++) {
                         free(collections_darray_get(bucket, j));
@@ -230,7 +232,7 @@ void collections_hashmap_destroy(HashMap *map)
     }
 }
 
-static inline HashMapNode *create_node(int hash, int *key, void *value)
+static inline HashMapNode *create_node(int hash, int key, void *value)
 {
     HashMapNode *node = calloc(1, sizeof(HashMapNode));
     check_mem(node);
@@ -244,7 +246,7 @@ error:
     return NULL;
 }
 
-static inline DArray *find_bucket(HashMap *map, int *key, int create, uint32_t *hash_out)
+static inline DArray *find_bucket(HashMap *map, int key, int create, uint32_t *hash_out)
 {
     uint32_t hash = map->hash(key);
     int bucket_n = hash % DEFAULT_BUCKETS_NUM;
@@ -264,9 +266,10 @@ error:
     return NULL;
 }
 
-int collections_hashmap_set(HashMap *map, int *key, void *value)
+int collections_hashmap_set(HashMap *map, int key, void *value)
 {
     uint32_t hash = 0;
+    printf("Hashmap set\n");
     DArray *bucket = find_bucket(map, key, 1, &hash);
     check(bucket, "Error can't create bucket.");
 
@@ -280,7 +283,7 @@ error:
     return -1;
 }
 
-static inline int get_node(HashMap *map, uint32_t hash, DArray *bucket, int *key)
+static inline int get_node(HashMap *map, uint32_t hash, DArray *bucket, int key)
 {
     int i = 0;
 
@@ -294,7 +297,7 @@ static inline int get_node(HashMap *map, uint32_t hash, DArray *bucket, int *key
     return -1;
 }
 
-void *collections_hashmap_get(HashMap *map, int *key)
+void *collections_hashmap_get(HashMap *map, int key)
 {
     uint32_t hash = 0;
     int i = 0;
@@ -302,7 +305,8 @@ void *collections_hashmap_get(HashMap *map, int *key)
     if (!bucket) return NULL;
 
     i = get_node(map, hash, bucket, key);
-    if (i == -1) return NULL;
+    if (i == -1) 
+        return NULL;
 
     HashMapNode *node = collections_darray_get(bucket, i);
     check(node != NULL, "Failed to get node from bucket when it should exist.");
@@ -329,7 +333,7 @@ int collections_hashmap_traverse(HashMap *map, HashMapTraverseCb traverse_cb)
     return 0;
 }
 
-void *collections_hashmap_delete(HashMap *map, int *key)
+void *collections_hashmap_delete(HashMap *map, int key)
 {
     uint32_t hash = 0;
     DArray *bucket = find_bucket(map, key, 0, &hash);

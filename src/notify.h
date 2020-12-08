@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <sys/inotify.h>
 
-void notify_watch(int dir_count, char **paths);
+void notify_watch(int dir_count, char **paths,int client_socket);
 
 
 #endif

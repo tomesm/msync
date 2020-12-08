@@ -20,10 +20,13 @@ typedef double float64_t;
 #define unpack754_32(i) (unpack754((i), 32, 8))
 #define unpack754_64(i) (unpack754((i), 64, 11))
 
+#define MAXDATASIZE 255
+#define MESSAGE_PATH_LEN_OFFSET 7
+
 typedef struct Message {
     uint16_t action;
     uint16_t isdir;
-    char *path;
+    unsigned char *path;
     char *data;
 }Message;
 
@@ -64,19 +67,25 @@ typedef struct Message {
 **  c - 8-bit char          f - float, 32-bit
 **  s - string (16-bit length is automatically prepended)
 */
-int32_t net_pack(unsigned char * buf, char * format, ...);
+int32_t net_pack(unsigned char * buf, const char * format, ...);
 
 /*
 ** net_unpack() -- unpack data dictated by the format string into the buffer
 */
-void net_unpack(unsigned char * buf, char * format, ...);
+void net_unpack(unsigned char * buf, const char * format, ...);
 
 // void *net_get_in_addr(struct sockaddr *sa);
 
-void net_send_msg(int sockfd, Message *message);
+void net_message_send(int sockfd, Message *message);
+
+Message *net_message_request_create(uint16_t action, uint16_t isdir, unsigned char* path);
+
+char *net_concat_strings(int count, ...);
 
 int net_client_get_socket();
 
 void net_server_run();
+
+char *net_get_message_str_length(uint16_t len);
 
 #endif
