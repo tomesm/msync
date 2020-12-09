@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <ftw.h>
+#include <errno.h>
 
 #include "fs.h"
 
@@ -37,6 +38,12 @@ static inline void dir_create(const char *path)
     }
 }
 
+static inline void dir_modify(const char *path)
+{
+    // We support only rename
+    
+}
+
 static inline void file_create(const char *path)
 {    
     FILE *file;
@@ -47,7 +54,7 @@ static inline void file_create(const char *path)
         exit(EXIT_FAILURE);
     }
     // /* Write data to file */
-    // fputs(data, fPtr);
+    // fputs(data, file);
 
     fclose(file);
     printf("File created successfully.\n");
@@ -60,6 +67,22 @@ static inline void file_delete(const char *path)
    else
     //   printf("Unable to delete the file %s\n", path);
     perror( "Error deleting file" );
+}
+
+static inline void file_modify(const char *path, const char *data)
+{
+    FILE *file;
+    file = fopen(path, "wr");
+    if(file == NULL) {
+        /* File not created hence exit */
+        printf("Unable to create file.\n");
+        exit(EXIT_FAILURE);
+    }
+    // /* Write data to file */
+    fputs(data, file);
+
+    fclose(file);
+    printf("File modified successfully.\n");
 }
 
 void fs_make_changes(Message *message, bstring root)
@@ -83,7 +106,63 @@ void fs_make_changes(Message *message, bstring root)
         } else {
             file_delete((const char*) path->data);
         }
+    } else if (message->action == 3) {
+        if (message->isdir) {
+            // dir_delete((const char*) path->data);
+        } else {
+            file_modify((const char*) path->data, message->data);
+        }
     }
+}
+
+static inline unsigned get_file_size (const char *path)
+{
+    struct stat sb;
+    if (stat (path, & sb) != 0) {
+        fprintf (stderr, "'stat' failed for '%s': %s.\n",
+                 path, strerror (errno));
+        exit (EXIT_FAILURE);
+    }
+    return sb.st_size;
+}
+
+unsigned char *fs_read_file (const char * file_name)
+{
+    unsigned s;
+    unsigned char * contents;
+    FILE * f;
+    size_t bytes_read;
+    int status;
+
+    s = get_file_size (file_name);
+    contents = malloc (s + 1);
+    if (! contents) {
+        fprintf (stderr, "Not enough memory.\n");
+        exit (EXIT_FAILURE);
+    }
+
+    f = fopen (file_name, "rb");
+    if (!f) {
+        fprintf (stderr, "Could not open '%s': %s.\n", file_name,
+        strerror (errno));
+        exit (EXIT_FAILURE);
+    }
+
+    bytes_read = fread (contents, sizeof (unsigned char), s, f);
+    if (bytes_read != s) {
+        fprintf (stderr, "Short read of '%s': expected %d bytes "
+                 "but got %d: %s.\n", file_name, s, (int) bytes_read,
+                 strerror (errno));
+        exit (EXIT_FAILURE);
+    }
+
+    status = fclose (f);
+    if (status != 0) {
+        fprintf (stderr, "Error closing '%s': %s.\n", file_name,
+                 strerror (errno));
+        exit (EXIT_FAILURE);
+    }
+    return contents;
 }
 
 // void content_create(char *path, int isdir)
@@ -116,52 +195,5 @@ void fs_make_changes(Message *message, bstring root)
 //     return NULL;
 // }
 
-// static unsigned get_file_size (const char * file_name)
-// {
-//     struct stat sb;
-//     if (stat (file_name, & sb) != 0) {
-//         fprintf (stderr, "'stat' failed for '%s': %s.\n",
-//                  file_name, strerror (errno));
-//         exit (EXIT_FAILURE);
-//     }
-//     return sb.st_size;
-// }
 
-// static unsigned char * read_whole_file (const char * file_name)
-// {
-//     unsigned s;
-//     unsigned char * contents;
-//     FILE * f;
-//     size_t bytes_read;
-//     int status;
 
-//     s = get_file_size (file_name);
-//     contents = malloc (s + 1);
-//     if (! contents) {
-//         fprintf (stderr, "Not enough memory.\n");
-//         exit (EXIT_FAILURE);
-//     }
-
-//     f = fopen (file_name, "rb");
-//     if (!f) {
-//         fprintf (stderr, "Could not open '%s': %s.\n", file_name,
-//         strerror (errno));
-//         exit (EXIT_FAILURE);
-//     }
-
-//     bytes_read = fread (contents, sizeof (unsigned char), s, f);
-//     if (bytes_read != s) {
-//         fprintf (stderr, "Short read of '%s': expected %d bytes "
-//                  "but got %d: %s.\n", file_name, s, (int) bytes_read,
-//                  strerror (errno));
-//         exit (EXIT_FAILURE);
-//     }
-
-//     status = fclose (f);
-//     if (status != 0) {
-//         fprintf (stderr, "Error closing '%s': %s.\n", file_name,
-//                  strerror (errno));
-//         exit (EXIT_FAILURE);
-//     }
-//     return contents;
-// }

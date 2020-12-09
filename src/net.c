@@ -539,14 +539,14 @@ void net_message_send(int sockfd, Message *message)
     clean_message(message);
 }
 
-Message *net_message_request_create(uint16_t action, uint16_t isdir, unsigned char* path)
+Message *net_message_request_create(uint16_t action, uint16_t isdir, unsigned char* path, unsigned char *data)
 {
     Message *message = malloc(sizeof(Message));
     check_mem(message);
     message->action = action;
     message->isdir = isdir;
     message->path = path;
-    message->data = "some Testing data";
+    message->data = data;
 
     return message;
 error:

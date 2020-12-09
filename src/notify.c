@@ -25,6 +25,7 @@
 
 int keep_running;
 int watched_items;
+int watch_lock;
 bstring root_dir;
 
 void signal_handler(int signum)
@@ -78,8 +79,16 @@ void notif_clean(HashMap *map, int fd) {
 
 void send_message(int sock, uint16_t action, uint16_t isdir, bstring path)
 {
-    Message *message = net_message_request_create(action, isdir, path->data);
-    net_message_send(sock, message);
+    unsigned char *data = "";
+    if (action == 3 && isdir == 0) {
+        bstring file_path = bstrcpy(root_dir);
+        int r =bcatcstr(file_path, "/");
+        r = bconcat(file_path, path);
+        // check(r == BSTR_OK, "ERROR :: concatenating bstrings");
+        data = fs_read_file((const char *) file_path->data);
+    } 
+    Message *message = net_message_request_create(action, isdir, path->data, data);
+    net_message_send(sock, message);    
 }
 
 bstring create_path(bstring dir, char *name, int is_full, int root_len)
@@ -135,7 +144,7 @@ int handle_action(HashMap *map, struct inotify_event *event, bstring dir, int ac
         check(r == 0, "ERROR :: Falied to set watch on: %s", path->data);
 
         send_message(sock, (uint16_t) action, (uint16_t) 1, relative_path);
-        printf("Action %d for a directory %s sent.\n", action, path->data);
+        printf("Action %d for a directory %s sent.\n", action, relative_path->data);
 
         return 1;
     } else {                        
@@ -154,6 +163,8 @@ int process_event(HashMap *map, char *buffer, int fd, int sock, int len)
     while (j < len) {
         struct inotify_event *event = (struct inotify_event *)&buffer[j];
         if (event->len) {
+
+            printf("Event action: %d\n", event->mask);
             bstring curr_dir = (bstring) collections_hashmap_get(map, event->wd);
             int rc = 0;
             if (event->mask & IN_CREATE) {
@@ -167,12 +178,49 @@ int process_event(HashMap *map, char *buffer, int fd, int sock, int len)
 
                 return 1;
             } else if (event->mask & IN_MODIFY) {
-                if (event->mask & IN_ISDIR) {
-                    printf("Directory %s was modified.\n", event->name);
-                } else {
-                    printf("File %s was modified\n", event->name);
-                }
+                // For directories we support only rename operation
+                rc = handle_action(map, event, curr_dir, 3, fd, sock, root_dir->slen);
+                check(rc == 1, "ERROR :: failed to handle %d event", 2);
+                // printf("File %s was modified.\n", event->name);
+
                 return 1;
+            } else if (event->mask & IN_MOVE) {
+                if (event->mask & IN_ISDIR) { 
+                    printf("Directory %s was moved.\n", event->name);
+                } else {
+                    printf("File %s was moved.\n", event->name);
+                }
+            }
+            else if (event->mask & IN_MOVED_TO) {
+                if (event->mask & IN_ISDIR) { 
+                    printf("Directory %s was moved TO.\n", event->name);
+                } else {
+                    printf("File %s was moved TO.\n", event->name);
+                }
+            } else if (event->mask & IN_MOVED_FROM) {
+                if (event->mask & IN_ISDIR) { 
+                    printf("Directory %s was moved FROM.\n", event->name);
+                } else {
+                    printf("File %s was moved FROM.\n", event->name);
+                }
+            } else if (event->mask & IN_CLOSE) {
+                if (event->mask & IN_ISDIR) { 
+                    printf("Directory %s was CLOSED.\n", event->name);
+                } else {
+                    printf("File %s was CLOSED.\n", event->name);
+                }
+            } else if (event->mask & IN_MOVE_SELF) {
+                if (event->mask & IN_ISDIR) { 
+                    printf("Directory %s was moved SELF.\n", event->name);
+                } else {
+                    printf("File %s was moved SELF.\n", event->name);
+                }
+            } else if (event->mask & IN_ALL_EVENTS) {
+                if (event->mask & IN_ISDIR) { 
+                    printf("Directory %s was ALL.\n", event->name);
+                } else {
+                    printf("File %s was ALL.\n", event->name);
+                }
             }
         }
         j += EVENT_SIZE + event->len;
@@ -223,6 +271,8 @@ void notify_watch(int dir_count, char **paths, int client_socket)
     timeout.tv_sec = 1;
     timeout.tv_usec = 0;
 
+    watch_lock = 0;
+
     fdmax = fd;
     while (keep_running) {
         read_fds = master; // copy it
@@ -237,20 +287,28 @@ void notify_watch(int dir_count, char **paths, int client_socket)
             if (FD_ISSET(i, &read_fds)) { // we got something
                 if (i == fd) { // got inotify event
 
-                    read_len = read(fd, event_buffer, EVENT_BUF_LEN);
-                    if (read_len < 0) {
-                        if (errno == EINTR) { // close running by pressing ctrl-c
-                        // notif_clean(map, fd);
-                        debug("SIGINT captured. Closing the watcher");
-                        goto error;
-                        } else {
-                            log_err("ERROR :: read events.");
+                    // Do not process event if we just made a change to fs
+                    if (watch_lock) {
+                        watch_lock = 0;
+                        // FD_CLR(fd, &master);
+                        // clear the FD by consumating the event
+                        read_len = read(fd, event_buffer, EVENT_BUF_LEN);
+                        
+                    } else {
+                        read_len = read(fd, event_buffer, EVENT_BUF_LEN);
+                        if (read_len < 0) {
+                            if (errno == EINTR) { // close running by pressing ctrl-c
+                            // notif_clean(map, fd);
+                            debug("SIGINT captured. Closing the watcher");
+                            goto error;
+                            } else {
+                                log_err("ERROR :: read events.");
+                            }
                         }
+
+                        int ret = process_event(map, event_buffer, fd, client_socket, read_len);
+                        check(ret == 1, "ERROR :: Failed to process intotify event");
                     }
-
-                    int ret = process_event(map, event_buffer, fd, client_socket, read_len);
-                    check(ret == 1, "ERROR :: Failed to process intotify event");
-
                     // FD_SET(fd, &read_fds);
                     // FD_SET(client_socket, &read_fds);
                 } else {
@@ -279,8 +337,8 @@ void notify_watch(int dir_count, char **paths, int client_socket)
 
                     int16_t message_size;
 
-                    printf("Size of path: %d\n", path_len);
-                    printf("Size of data: %d\n", data_len);
+                    printf("RECEIVED: size of path: %d\n", path_len);
+                    printf("RECEIVED: size of data: %d\n", data_len);
 
                     net_unpack(data_buffer, format, &message_size, &message->action, &message->isdir, 
                                 message->path, message->data);
@@ -289,6 +347,7 @@ void notify_watch(int dir_count, char **paths, int client_socket)
                                 message_size, message->action, message->isdir, message->path, 
                                 message->data);
                     
+                    watch_lock = 1;
                     fs_make_changes(message, root_dir);
                     // FD_SET(fd, &read_fds);
                     // FD_SET(client_socket, &read_fds);
@@ -297,6 +356,7 @@ void notify_watch(int dir_count, char **paths, int client_socket)
             } 
         }    
     }
+    printf("Out of while loop\n");
 
 error:
     printf("Exiting!\n");

@@ -13,5 +13,6 @@
 // int fs_dir_delete(unsigned char *path);
 
 void fs_make_changes(Message *message, bstring root);
+unsigned char *fs_read_file (const char * file_name);
 
 #endif

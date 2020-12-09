@@ -78,7 +78,7 @@ void net_unpack(unsigned char * buf, const char * format, ...);
 
 void net_message_send(int sockfd, Message *message);
 
-Message *net_message_request_create(uint16_t action, uint16_t isdir, unsigned char* path);
+Message *net_message_request_create(uint16_t action, uint16_t isdir, unsigned char *path, unsigned char *data);
 
 char *net_concat_strings(int count, ...);
 
