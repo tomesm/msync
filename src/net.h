@@ -1,5 +1,5 @@
-#ifndef CONNECTION_H
-#define CONNECTION_H
+#ifndef __NET_H__
+#define __NET_H__
 
 #include <netinet/in.h>
 #include <stdio.h>
